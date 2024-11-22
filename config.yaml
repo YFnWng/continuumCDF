@@ -1,0 +1,50 @@
+---
+spline:
+  L: 200e-3 # m
+  k: 3 # degree
+  n: 12 # number of control points
+# GV.n = 10; % order of Chebyshev polynomial or breaks of spline
+# order = 4;
+# breaks = linspace(0,1,GV.n);
+# knots = augknt(breaks,order); % 4th-order (cubic), multiplicity 1, C2
+# GV.dof = length(knots) - order; % n+2
+# colsites = breaks(1:end-1) + (breaks(2:end)-breaks(1:end-1))/2; %(n-1)x1, n+1 points plus boundary condition?
+# % colsites = linspace(0,L,GV.dof); % always satisfy Schoenberg-Whitney condition
+# % maybe all use Legendre quadrature points?
+# sites = [0,colsites,1]; % 1x(n+1)
+
+robot:
+  r: 1e-3
+  E: 100e9 # Pa
+  shear_modulus: 80e9
+# area = pi*r^2;
+# I = pi*r^4/4;
+# J = 2*I;
+# GV.Kse = diag([shear_modulus*area, shear_modulus*area, E*area]);
+# GV.Kbt = diag([E*I, E*I, shear_modulus*J]);
+# GV.invKbt = inv(GV.Kbt);
+
+  num_tendons: 4
+  tendon_offset: 15e-3
+# rot = @(theta) tendon_offset*[cos(theta); sin(theta); 0];
+# GV.r = zeros(3,GV.num_tendons);
+# GV.hat_r = zeros(3,3,GV.num_tendons);
+# for i = 1:GV.num_tendons
+#     GV.r(:,i) = rot((i-1)*pi/2);%Tendons 90 deg apart
+#     GV.hat_r(:,:,i) = [0 -GV.r(3,i) GV.r(2,i);
+#                        GV.r(3,i) 0 -GV.r(1,i);
+#                       -GV.r(2,i) GV.r(1,i) 0];
+# end
+  q_lb: [-100,-100]
+  q_ub: [100,100]
+
+# t: [1/2-sqrt(15)/10, 1/2, 1/2+sqrt(15)/10] # Legendre zeros as quadrature points
+# V = fliplr(vander(t-1/2)); % vxv
+# GV.invV = inv(V);
+# GV.one3 = reshape(eye(3),[3,1,3]);
+
+# NL: 6
+# Lmax: 0.20 # m
+# Lmin: 0.04
+
+
