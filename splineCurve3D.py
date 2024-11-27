@@ -194,7 +194,7 @@ def zero_force(p):
     return 0*p
 
 class TDCR(splineCurve3D):
-    def __init__(self, spline_config, robot_config, device, fe=zero_force):
+    def __init__(self, spline_config, robot_config, device):
         # spline properties
         n = spline_config['n']
         k = spline_config['k']
@@ -202,7 +202,7 @@ class TDCR(splineCurve3D):
         t = torch.cat((torch.zeros(k), breaks, torch.ones(k)))# knots
         sites = torch.cat((torch.tensor([0]), breaks[:-1] + (breaks[1:] - breaks[:-1])/2, torch.tensor([1])))
         super().__init__(t, k, spline_config['L'], sites, device)
-        self.fe = fe
+        
 
         # robot properties
         PI = torch.tensor(math.pi,device=device)
@@ -225,14 +225,15 @@ class TDCR(splineCurve3D):
         self.tau = None
 
 
-    def solve_Cosserat_model(self,q,init_guess=None):
+    def solve_Cosserat_model(self,q,init_guess=None, fe=zero_force):
         # Implementation based on cubic B-spline
         # https://www.math.ucdavis.edu/~bremer/classes/fall2018/MAT128a/lecture15.pdf
         # https://pytorch-minimize.readthedocs.io/en/latest/api/generated/torchmin.minimize.html
         # Nov 2024, Yifan Wang
         # Kirchhoff tendon-driven robot
         # q: N x num_tendons/2
-
+        
+        self.fe = fe
         self.N = q.shape[0]
         # self.tau = torch.zeros((self.N,self.n_tendons/2))
         self.tau = torch.cat((q,-q),dim=1) # push-pull
