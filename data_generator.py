@@ -33,11 +33,12 @@ class DataGenerator():
         self.q_min = -40
         # device
         self.device = device
+        self.arc_pt_num = 64
 
         # data generation
         self.workspace = [[-0.05,-0.05,0.055],[0.05,0.05,0.15]]
-        self.theta = torch.linspace(0,PI*0.8,12,device=device)
-        self.arcl = torch.linspace(0.3,1,12,device=device)
+        self.theta = torch.linspace(0,PI*0.8,self.arc_pt_num,device=device)
+        self.arcl = torch.linspace(0.3,1,self.arc_pt_num,device=device)
         # self.workspace = [[0.0,0.0,0.0],[0.0,0.0,0.2]]
         self.n_disrete = 2         # total number of x: n_discrete**3
         self.batchsize = 200       # batch size of q
@@ -201,7 +202,7 @@ class DataGenerator():
                 'idx':  idx.detach().cpu().numpy(),
             }
             print(f'point {i} finished, number of q: {len(q)}')
-        np.save(os.path.join(save_path,'data.npy'),data)
+        np.save(os.path.join(save_path,'data_1130.npy'),data)
 
 def analysis_data(x):
     # Compute the squared Euclidean distance between each row

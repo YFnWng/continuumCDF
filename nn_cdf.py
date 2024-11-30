@@ -42,11 +42,11 @@ class CDF:
         self.q_min = -40
 
         # # uncomment these lines to process the generated data and train your own CDF
-        # self.raw_data = np.load(os.path.join(CUR_PATH,'data.npy'),allow_pickle=True).item()
+        # self.raw_data = np.load(os.path.join(CUR_PATH,'data_1128.npy'),allow_pickle=True).item()
         # self.process_data(self.raw_data)
-        # self.data_path = os.path.join(CUR_PATH,'data.pt') 
-        # self.data = self.load_data(self.data_path)
-        # self.len_data = len(self.data['k'])
+        self.data_path = os.path.join(CUR_PATH,'data_1128.pt') 
+        self.data = self.load_data(self.data_path)
+        self.len_data = len(self.data['k'])
 
     def process_data(self,data):
         keys = list(data.keys())  # Create a copy of the keys
@@ -80,7 +80,7 @@ class CDF:
             'k':torch.tensor([k for k in processed_data.keys()]).to(self.device)
         }
 
-        torch.save(final_data,os.path.join(CUR_PATH,'data.pt'))
+        torch.save(final_data,os.path.join(CUR_PATH,'data_1128.pt'))
         return data
     
     def load_data(self,path):
@@ -217,7 +217,7 @@ class CDF:
                 if iter % 10 == 0 and iter>10:
                     print(f"Epoch:{iter}\tMSE Loss: {d_loss.item():.3f}\tEikonal Loss: {eikonal_loss.item():.3f}\tTension Loss: {tension_loss.item():.3f}\tGradient Loss: {gradient_loss.item():.3f}\tTotal loss:{loss.item():.3f}\tTime: {time.strftime('%H:%M:%S', time.gmtime())}")
                     model_dict[iter] = model.state_dict()
-                    torch.save(model_dict, os.path.join(CUR_PATH,'model_dict_withplot2.pt'))
+                    torch.save(model_dict, os.path.join(CUR_PATH,'model_dict_1128.pt'))
 
                     # Update plot dynamically
                     losses.append(loss.item())
@@ -231,7 +231,7 @@ class CDF:
                 plt.pause(0.01)  # Pause to allow plot to update
 
         plt.ioff()
-        plt.show()
+        # plt.show()
 
         return model
     
@@ -288,7 +288,7 @@ class CDF:
                 theta = PI*0.8*torch.rand(1).to(device)
                 r = self.L/theta
                 x = torch.tensor([[r*(1-torch.cos(theta*arcl)),0.0,r*torch.sin(theta*arcl)]],device=self.device)
-                q = self.sample_q(batch_q=1000)
+                q = self.sample_q(batch_q=1)
                 p0 = self.curve.get_position(config=q)
                 pp0 = self.curve.T[:,:,0:3,3].cpu().detach().numpy()
                 for _ in range (num_iter):
@@ -301,20 +301,20 @@ class CDF:
                 sdf = torch.linalg.vector_norm(x[None,:,None,:] - p[:,None,...], dim=3) # Nq x Nx x n
                 sdf,_ = torch.min(sdf.reshape((q.shape[0],-1)), dim=1)
                 
-                print(sdf.shape)
+                print('sdf.shape', sdf.shape)
 
-                # xx = x.cpu().detach().numpy()
-                # pp = self.curve.T[:,:,0:3,3].cpu().detach().numpy()
-                # ax = plt.figure().add_subplot(projection='3d')
-                # ax.scatter(xx[:,0],xx[:,1],xx[:,2])
-                # for i in range(pp.shape[0]):
-                #     ax.plot(pp[i,:,0], pp[i,:,1], pp[i,:,2])
-                #     ax.plot(pp0[i,:,0], pp0[i,:,1], pp0[i,:,2])
-                # ax.axis('equal')
-                # ax.set_xlabel('x')
-                # ax.set_ylabel('y')
-                # ax.set_zlabel('z')
-                # plt.show()
+                xx = x.cpu().detach().numpy()
+                pp = self.curve.T[:,:,0:3,3].cpu().detach().numpy()
+                ax = plt.figure().add_subplot(projection='3d')
+                ax.scatter(xx[:,0],xx[:,1],xx[:,2])
+                for i in range(pp.shape[0]):
+                    ax.plot(pp[i,:,0], pp[i,:,1], pp[i,:,2])
+                    ax.plot(pp0[i,:,0], pp0[i,:,1], pp0[i,:,2])
+                ax.axis('equal')
+                ax.set_xlabel('x')
+                ax.set_ylabel('y')
+                ax.set_zlabel('z')
+                plt.show()
                 
                 error = sdf.reshape(-1).abs()
                 MAE = error.mean()
@@ -360,10 +360,10 @@ if __name__ == "__main__":
     # device = torch.device("cpu")
     cdf = CDF(device)
 
-    # cdf.train_nn(epoches=25000)
+    # cdf.train_nn(epoches=49000)
     
     model = MLPRegression(input_dims=3+2*12, output_dims=1, mlp_layers=[1024, 512, 256, 128, 128],skips=[], act_fn=torch.nn.ReLU, nerf=True)
-    model.load_state_dict(torch.load(os.path.join(CUR_PATH,'model_dict_withplot2.pt'))[24900])
+    model.load_state_dict(torch.load(os.path.join(CUR_PATH,'model_dict_1128.pt'))[48900])
     # model.load_state_dict(torch.load(os.path.join(CUR_PATH,'model_dict.pt'))[49900])
     model.to(device)
-    cdf.eval_nn(model)
+    cdf.eval_nn(model,num_iter = 1)

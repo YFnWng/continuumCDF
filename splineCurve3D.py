@@ -249,7 +249,7 @@ class TDCR(splineCurve3D):
             init_guess, 
             method='l-bfgs', 
             options=dict(line_search='strong-wolfe'),
-            max_iter=1,
+            # max_iter=1000,
             disp=2
             )
         self.c = res.x
@@ -329,12 +329,64 @@ class TDCR(splineCurve3D):
         
         # Assemble collocation and boundary errors
         bL = torch.linalg.solve(self.Kbt[None,:,:],meL[...,None]) # N x 3
-        print(meL)
-        print(self.Kbt)
 
         col_err = torch.cat((torch.div(c@self.D[None,:,:],self.L), self.uc[:,:,-1,None]), dim=2) - torch.cat((gx, bL), dim=2) # N x 3 x len(s)+1
 
         return torch.sum(torch.square(col_err)) # careful here
+
+
+    # def collocation_error(self, c):
+    #     # Compute u_c for all collocation points
+    #     self.uc = c @ self.S[None, :, :]  # Shape: (N, 3, len(sites))
+
+    #     # Forward kinematics
+    #     self.integrate_SE3(c, quadrature_pose=True)
+
+    #     # Compute distributed external forces
+    #     fe = self.fe(self.Tq[:, :, 0:3, 3])  # Shape: (N, 3(n-1), 3)
+    #     intfe = torch.cat((self.L * self.hd[None, :, None] *
+    #                     (5 * (fe[:, 0::3, :] + fe[:, 2::3, :]) + 8 * fe[:, 1::3, :]) / 18,
+    #                     torch.zeros((self.N, 1, 3), device=self.device)), dim=1)
+    #     Intfe = torch.cumsum(intfe.flip(1), dim=1)  # Shape: (N, len(s), 3)
+
+    #     # Precompute constants
+    #     e3 = torch.tensor([0.0, 0.0, 1.0], device=self.device).tile(self.N, 1)  # Shape: (N, 3)
+    #     I3 = torch.eye(3, device=self.device).unsqueeze(0)  # Shape: (1, 3, 3)
+
+    #     # Compute per-tendon contributions in a vectorized manner
+    #     pb_si = torch.cross(self.uc[:, :, :, None], self.r.T[None, :, :, None], dim=2) + e3[:, :, None, None]  # Shape: (N, 3, len(s), n_tendons)
+    #     pb_s_norm = torch.linalg.vector_norm(pb_si, dim=1, keepdim=True)  # Shape: (N, 1, len(s), n_tendons)
+
+    #     Fb_j = -self.tau[:, :, None] * pb_si / pb_s_norm  # Shape: (N, 3, len(s), n_tendons)
+    #     A_j = -(pb_si.unsqueeze(-1) @ pb_si.unsqueeze(-2) -
+    #             torch.square(pb_s_norm).unsqueeze(-1) * I3) * (self.tau / pb_s_norm ** 3).unsqueeze(-1)  # Shape: (N, len(s), n_tendons, 3, 3)
+
+    #     a_j = (A_j @ torch.cross(self.uc[:, :, :, None], pb_si, dim=1).unsqueeze(-1)).squeeze(-1)  # Shape: (N, 3, len(s), n_tendons)
+
+    #     # Aggregate all tendon contributions
+    #     a = torch.sum(a_j, dim=-1)  # Shape: (N, 3, len(s))
+    #     b = torch.sum(torch.cross(self.r[None, :, :, None], a_j, dim=1), dim=-1)  # Shape: (N, 3, len(s))
+    #     A = torch.sum(A_j, dim=-1)  # Shape: (N, len(s), 3, 3)
+
+    #     # Boundary conditions
+    #     meL = torch.sum(torch.cross(self.r[None, :, :], Fb_j[:, :, -1, :], dim=1), dim=-1)  # Shape: (N, 3)
+    #     bL = torch.linalg.solve(self.Kbt[None, :, :], meL.unsqueeze(-1)).squeeze(-1)  # Shape: (N, 3)
+
+    #     # Compute K, nb, and gx in a batch
+    #     H = torch.sum(self.r_hat @ (-A_j @ self.r_hat.T.unsqueeze(0)), dim=-1)  # Shape: (N, len(s), 3, 3)
+    #     K = H + self.Kbt[None, :, :].unsqueeze(1)  # Shape: (N, len(s), 3, 3)
+
+    #     nb = -torch.sum(Fb_j, dim=-1) + torch.cumsum(Intfe.flip(1), dim=1).flip(1)  # Shape: (N, 3, len(s))
+    #     mb = torch.matmul(self.Kbt[None, :, :], self.uc).permute(0, 2, 1)  # Shape: (N, 3, len(s))
+
+    #     gx = torch.linalg.solve(K, -(torch.cross(self.uc, mb, dim=1) + torch.cross(e3[:, None, :], nb, dim=1) + b))  # Shape: (N, 3, len(s))
+
+    #     # Collocation and boundary errors
+    #     col_err = torch.cat((torch.div(c @ self.D[None, :, :], self.L), self.uc[:, :, -1, None]), dim=2) - \
+    #             torch.cat((gx, bL[:, :, None]), dim=2)  # Shape: (N, 3, len(s) + 1)
+
+    #     return torch.sum(torch.square(col_err))
+
 
 
 def main():
@@ -346,10 +398,14 @@ def main():
     torch.autograd.set_detect_anomaly(True)
     robot = TDCR(config['spline'], config['robot'], device)
     q = torch.tensor([[20,0],[0,20]],device=device)
-    init_guess1 = torch.cat((torch.zeros((1,1,12),device=device),7.64*torch.ones((1,1,12),device=device),torch.zeros((1,1,12),device=device)),dim=1)
-    init_guess2 = torch.cat((-7.64*torch.ones((1,1,12),device=device),torch.zeros((1,1,12),device=device),torch.zeros((1,1,12),device=device)),dim=1)
-    init_guess = torch.cat((init_guess1,init_guess2),dim=0)
-    robot.solve_Cosserat_model(q,init_guess=init_guess)
+    # init_guess1 = torch.cat((torch.zeros((1,1,12),device=device),7.64*torch.ones((1,1,12),device=device),torch.zeros((1,1,12),device=device)),dim=1)
+    # init_guess2 = torch.cat((-7.64*torch.ones((1,1,12),device=device),torch.zeros((1,1,12),device=device),torch.zeros((1,1,12),device=device)),dim=1)
+    # init_guess = torch.cat((init_guess1,init_guess2),dim=0)
+    # robot.solve_Cosserat_model(q,init_guess=init_guess)
+
+    robot.solve_Cosserat_model(q)
+
+
 #     k = 3 # degree
 #     n = 12 # number of control points
 #     breaks = torch.linspace(0, 1, k+n+1-2*k)
