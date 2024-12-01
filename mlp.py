@@ -47,17 +47,29 @@ def MLP(channels, act_fn=ReLU, islast = False):
     Returns:
         nn sequential layers
     """
-    if not islast:
-        layers = [Seq(Lin(channels[i - 1], channels[i]), act_fn())
-                  for i in range(1, len(channels))]
-    else:
-        layers = [Seq(Lin(channels[i - 1], channels[i]), act_fn())
-                  for i in range(1, len(channels)-1)]
-        layers.append(Seq(Lin(channels[-2], channels[-1])))
 
-    layers = Seq(*layers)
+    layers = []
+    for i in range(1, len(channels)):
+        layers.append(Lin(channels[i - 1], channels[i]))
 
-    return layers
+        if not islast or i < len(channels) - 1:
+            layers.append(BN(channels[i]))
+            layers.append(act_fn())
+
+    return Seq(*layers)
+
+
+    # if not islast:
+    #     layers = [Seq(Lin(channels[i - 1], channels[i]), act_fn())
+    #               for i in range(1, len(channels))]
+    # else:
+    #     layers = [Seq(Lin(channels[i - 1], channels[i]), act_fn())
+    #               for i in range(1, len(channels)-1)]
+    #     layers.append(Seq(Lin(channels[-2], channels[-1])))
+
+    # layers = Seq(*layers)
+
+    # return layers
 
 
 class MLPRegression(nn.Module):

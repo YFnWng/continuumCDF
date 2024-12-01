@@ -41,12 +41,11 @@ class CDF:
         self.q_max = 40 # curvature limit
         self.q_min = -40
 
-        # uncomment these lines to process the generated data and train your own CDF
         self.datafile_prefix = datafile_prefix
         self.raw_data = np.load(os.path.join(CUR_PATH,'data_'+self.datafile_prefix+'.npy'),allow_pickle=True).item()
         self.data_path = os.path.join(CUR_PATH,'data_'+self.datafile_prefix+'.pt') 
-        self.process_data(self.raw_data,self.data_path)
-
+        # uncomment these lines to process the generated data and train your own CDF
+        # self.process_data(self.raw_data,self.data_path)
         self.data = self.load_data(self.data_path)
         self.len_data = len(self.data['k'])
 
@@ -147,9 +146,9 @@ class CDF:
 
         # model = MLPRegression(input_dims=3+2*self.n, output_dims=1, mlp_layers=[1024, 512, 256, 128, 128],skips=[], act_fn=torch.nn.ReLU, nerf=True)
         model.to(device)
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.0005)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5000,
-                                                        threshold=0.01, threshold_mode='rel',
+                                                        threshold=0.05, threshold_mode='rel',
                                                         cooldown=0, min_lr=0, eps=1e-04, verbose=True)
         scaler = torch.cuda.amp.GradScaler(enabled=True)
         COSLOSS = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
@@ -167,6 +166,7 @@ class CDF:
         line, = ax.plot([], [], label='Training Loss')
         ax.legend()
 
+        plt.show(block=False)
 
         for iter in range(epoches):
             model.train()
@@ -225,12 +225,14 @@ class CDF:
                     losses.append(loss.item())
                     iter_list.append(iter)
 
-                line.set_xdata(iter_list)
-                line.set_ydata(losses)
-                ax.relim()
-                ax.autoscale_view()
-                plt.draw()
-                plt.pause(0.01)  # Pause to allow plot to update
+                    line.set_xdata(iter_list)
+                    line.set_ydata(losses)
+                    ax.relim()
+                    ax.autoscale_view()
+                    fig.canvas.flush_events()
+                # plt.draw()
+                # plt.pause(0.01)  # Pause to allow plot to update
+
 
         plt.ioff()
         # plt.show()
@@ -376,10 +378,10 @@ if __name__ == "__main__":
     # device = torch.device("cpu")
     cdf = CDF(device,datafile_prefix='121')
 
-    # model = MLPRegression(input_dims=3+2*12, output_dims=1, mlp_layers=[1024, 512, 256, 128, 128],skips=[2], act_fn=torch.nn.ReLU, nerf=True)
-    model = MLPRegression(input_dims=3+2*12, output_dims=1, mlp_layers=[1024, 512, 512, 256, 128],skips=[2], act_fn=torch.nn.ReLU, nerf=True)
+    # model = MLPRegression(input_dims=3+2*12, output_dims=1, mlp_layers=[1024, 512, 256, 128, 128],skips=[], act_fn=torch.nn.ReLU, nerf=True)
+    model = MLPRegression(input_dims=3+2*12, output_dims=1, mlp_layers=[1024, 512, 512, 256, 256, 128],skips=[2,4], act_fn=torch.nn.ReLU, nerf=True)
 
-    # cdf.train_nn(epoches=20000,model=model)
+    cdf.train_nn(epoches=20000,model=model)
     
     model.load_state_dict(torch.load(os.path.join(CUR_PATH,'model_dict_121.pt'))[19000])
     # model.load_state_dict(torch.load(os.path.join(CUR_PATH,'model_dict.pt'))[49900])
