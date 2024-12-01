@@ -154,7 +154,7 @@ class splineCurve3D:
                 self.Tq[:,k*3+1,:,:] = self.Tq[:,k*3-2,:,:].clone()*expPsiq[self.N:2*self.N,:,:]
                 self.Tq[:,k*3+2,:,:] = self.T[:,k+1,:,:].clone()*expPsiq[2*self.N:,:,:]
 
-    def get_position(self, config=None, sites=np.linspace(0,1,19)):
+    def get_position(self, config=None, sites=np.linspace(0,1,49)):
         # config: N x (nx2), no torsion for now
         if config is None and self.c is None:
             print('Coefficients not given.')
@@ -181,7 +181,7 @@ class splineCurve3D:
             # p[:,k,:]  = (self.T[:,idx,:,:])[:,0:3,3]
         return p
     
-    def get_basis_idx(self, site_idx, sites=torch.linspace(0,1,19)):
+    def get_basis_idx(self, site_idx, sites=torch.linspace(0,1,49)):
         sites = sites.to(self.device)
         s = sites[site_idx]
         k_idx = torch.logical_and(torch.gt(s[:,None],self.t[None,:-1]),torch.le(s[:,None],self.t[None,1:])).nonzero()

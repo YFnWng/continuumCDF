@@ -33,7 +33,7 @@ class DataGenerator():
         self.q_min = -40
         # device
         self.device = device
-        self.arc_pt_num = 64
+        self.arc_pt_num = 48
 
         # data generation
         self.workspace = [[-0.05,-0.05,0.055],[0.05,0.05,0.15]]
@@ -43,7 +43,7 @@ class DataGenerator():
         self.n_disrete = 2         # total number of x: n_discrete**3
         self.batchsize = 200       # batch size of q
         # self.pose = torch.eye(4).unsqueeze(0).to(self.device).expand(self.batchsize,4,4).float()
-        self.epsilon = 5e-3         # distance threshold to filter data
+        self.epsilon = 1e-3         # distance threshold to filter data
 
     def compute_sdf(self,x,q,return_index = False):
         # x : (Nx,3)
@@ -101,7 +101,7 @@ class DataGenerator():
             q, 
             method='l-bfgs', 
             options=dict(line_search='strong-wolfe'),
-            max_iter=50,
+            max_iter=200,
             disp=0
             )
         
@@ -142,7 +142,7 @@ class DataGenerator():
 
         # compute d
         Np = q.shape[0]
-        q_template,link_idx = self.given_x_find_q(x)
+        q_template,link_idx = self.given_x_find_q(x,epsilon=self.epsilon)
         print(q_template.shape)
 
         if link_idx.min() == 0:
@@ -195,14 +195,14 @@ class DataGenerator():
         # plt.show()
         data = {}
         for i,p in enumerate(pts):
-            q,idx = self.given_x_find_q(p.unsqueeze(0)) 
+            q,idx = self.given_x_find_q(p.unsqueeze(0),epsilon=self.epsilon) 
             data[i] ={
                 'x':    p.detach().cpu().numpy(),
                 'q':    q.detach().cpu().numpy(),
                 'idx':  idx.detach().cpu().numpy(),
             }
             print(f'point {i} finished, number of q: {len(q)}')
-        np.save(os.path.join(save_path,'data_1130.npy'),data)
+        np.save(os.path.join(save_path,'data_121.npy'),data)
 
 def analysis_data(x):
     # Compute the squared Euclidean distance between each row
