@@ -20,7 +20,7 @@ np.random.seed(10)
 # torch.autograd.set_detect_anomaly(True)
 
 class CDF:
-    def __init__(self,device) -> None:
+    def __init__(self,device,datafile_prefix=None) -> None:
         # device
         self.device = device  
 
@@ -41,14 +41,16 @@ class CDF:
         self.q_max = 40 # curvature limit
         self.q_min = -40
 
-        # # uncomment these lines to process the generated data and train your own CDF
-        # self.raw_data = np.load(os.path.join(CUR_PATH,'data_1130.npy'),allow_pickle=True).item()
-        # self.process_data(self.raw_data)
-        self.data_path = os.path.join(CUR_PATH,'data_1130.pt') 
+        # uncomment these lines to process the generated data and train your own CDF
+        self.datafile_prefix = datafile_prefix
+        self.raw_data = np.load(os.path.join(CUR_PATH,'data_'+self.datafile_prefix+'.npy'),allow_pickle=True).item()
+        self.data_path = os.path.join(CUR_PATH,'data_'+self.datafile_prefix+'.pt') 
+        self.process_data(self.raw_data,self.data_path)
+
         self.data = self.load_data(self.data_path)
         self.len_data = len(self.data['k'])
 
-    def process_data(self,data):
+    def process_data(self,data, data_path):
         keys = list(data.keys())  # Create a copy of the keys
         processed_data = {}
         for k in keys:
@@ -80,7 +82,7 @@ class CDF:
             'k':torch.tensor([k for k in processed_data.keys()]).to(self.device)
         }
 
-        torch.save(final_data,os.path.join(CUR_PATH,'data_1130.pt'))
+        torch.save(final_data,data_path)
         return data
     
     def load_data(self,path):
@@ -217,7 +219,7 @@ class CDF:
                 if iter % 10 == 0 and iter>10:
                     print(f"Epoch:{iter}\tMSE Loss: {d_loss.item():.3f}\tEikonal Loss: {eikonal_loss.item():.3f}\tTension Loss: {tension_loss.item():.3f}\tGradient Loss: {gradient_loss.item():.3f}\tTotal loss:{loss.item():.3f}\tTime: {time.strftime('%H:%M:%S', time.gmtime())}")
                     model_dict[iter] = model.state_dict()
-                    torch.save(model_dict, os.path.join(CUR_PATH,'model_dict_1130.pt'))
+                    torch.save(model_dict, os.path.join(CUR_PATH,'model_dict_'+self.datafile_prefix+'.pt'))
 
                     # Update plot dynamically
                     losses.append(loss.item())
@@ -301,34 +303,34 @@ class CDF:
                 sdf = torch.linalg.vector_norm(x[None,:,None,:] - p[:,None,...], dim=3) # Nq x Nx x n
                 sdf,_ = torch.min(sdf.reshape((q.shape[0],-1)), dim=1)
                 
-                print('sdf.shape', sdf.shape)
+                # print('sdf.shape', sdf.shape)
 
-                xx = x.cpu().detach().numpy()
-                pp = self.curve.T[:,:,0:3,3].cpu().detach().numpy()
-                ax = plt.figure().add_subplot(projection='3d')
-                r = 5e-3  # Radius of the ball
-                center = (xx[:,0], xx[:,1], xx[:,2])  # Center of the ball (x, y, z)
-                # Create a meshgrid for the sphere
-                phi, theta = np.mgrid[0:np.pi:100j, 0:2*np.pi:100j]
-                x_plot = r * np.sin(phi) * np.cos(theta) + center[0]
-                y_plot = r * np.sin(phi) * np.sin(theta) + center[1]
-                z_plot = r * np.cos(phi) + center[2]
-                # Plotting the ball
-                # ax.scatter(xx[:,0],xx[:,1],xx[:,2],c='r',marker='o',size=10)
-                p_plot = p.cpu().detach().numpy()
-                p0_plot = p0.cpu().detach().numpy()
-                for i in range(p.shape[0]):
-                    ax.plot(p_plot[i,:,0], p_plot[i,:,1], p_plot[i,:,2],label='projected')
-                    ax.plot(p0_plot[i,:,0], p0_plot[i,:,1], p0_plot[i,:,2],label='original')
-                # print('p.shape', p.shape)
-                # print('p0.shape', p0.shape)
-                ax.plot_surface(x_plot, y_plot, z_plot, color='r', alpha=0.6, label='point')
-                # ax.legend()
-                ax.axis('equal')
-                ax.set_xlabel('x')
-                ax.set_ylabel('y')
-                ax.set_zlabel('z')
-                plt.show()
+                # xx = x.cpu().detach().numpy()
+                # pp = self.curve.T[:,:,0:3,3].cpu().detach().numpy()
+                # ax = plt.figure().add_subplot(projection='3d')
+                # r = 5e-3  # Radius of the ball
+                # center = (xx[:,0], xx[:,1], xx[:,2])  # Center of the ball (x, y, z)
+                # # Create a meshgrid for the sphere
+                # phi, theta = np.mgrid[0:np.pi:100j, 0:2*np.pi:100j]
+                # x_plot = r * np.sin(phi) * np.cos(theta) + center[0]
+                # y_plot = r * np.sin(phi) * np.sin(theta) + center[1]
+                # z_plot = r * np.cos(phi) + center[2]
+                # # Plotting the ball
+                # # ax.scatter(xx[:,0],xx[:,1],xx[:,2],c='r',marker='o',size=10)
+                # p_plot = p.cpu().detach().numpy()
+                # p0_plot = p0.cpu().detach().numpy()
+                # for i in range(p.shape[0]):
+                #     ax.plot(p_plot[i,:,0], p_plot[i,:,1], p_plot[i,:,2],label='projected')
+                #     ax.plot(p0_plot[i,:,0], p0_plot[i,:,1], p0_plot[i,:,2],label='original')
+                # # print('p.shape', p.shape)
+                # # print('p0.shape', p0.shape)
+                # ax.plot_surface(x_plot, y_plot, z_plot, color='r', alpha=0.6, label='point')
+                # # ax.legend()
+                # ax.axis('equal')
+                # ax.set_xlabel('x')
+                # ax.set_ylabel('y')
+                # ax.set_zlabel('z')
+                # plt.show()
                 
                 error = sdf.reshape(-1).abs()
                 MAE = error.mean()
@@ -372,14 +374,14 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # device = torch.device("cpu")
-    cdf = CDF(device)
+    cdf = CDF(device,datafile_prefix='121')
 
     # model = MLPRegression(input_dims=3+2*12, output_dims=1, mlp_layers=[1024, 512, 256, 128, 128],skips=[2], act_fn=torch.nn.ReLU, nerf=True)
     model = MLPRegression(input_dims=3+2*12, output_dims=1, mlp_layers=[1024, 512, 512, 256, 128],skips=[2], act_fn=torch.nn.ReLU, nerf=True)
 
     # cdf.train_nn(epoches=20000,model=model)
     
-    model.load_state_dict(torch.load(os.path.join(CUR_PATH,'model_dict_1130.pt'))[19000])
+    model.load_state_dict(torch.load(os.path.join(CUR_PATH,'model_dict_121.pt'))[19000])
     # model.load_state_dict(torch.load(os.path.join(CUR_PATH,'model_dict.pt'))[49900])
     model.to(device)
     cdf.eval_nn(model,num_iter = 3)
