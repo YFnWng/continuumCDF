@@ -250,7 +250,7 @@ class TDCR(splineCurve3D):
             method='l-bfgs', 
             options=dict(line_search='strong-wolfe'),
             # max_iter=1000,
-            disp=2
+            # disp=1
             )
         self.c = res.x
 
@@ -397,7 +397,8 @@ def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     torch.autograd.set_detect_anomaly(True)
     robot = TDCR(config['spline'], config['robot'], device)
-    q = torch.tensor([[20,0],[0,20]],device=device)
+    q = torch.tensor([[20,10]],device=device)
+    # q = torch.tensor([[20,10],[-10,10], [0,20],[3,5], [-8,2]],device=device)
     # init_guess1 = torch.cat((torch.zeros((1,1,12),device=device),7.64*torch.ones((1,1,12),device=device),torch.zeros((1,1,12),device=device)),dim=1)
     # init_guess2 = torch.cat((-7.64*torch.ones((1,1,12),device=device),torch.zeros((1,1,12),device=device),torch.zeros((1,1,12),device=device)),dim=1)
     # init_guess = torch.cat((init_guess1,init_guess2),dim=0)

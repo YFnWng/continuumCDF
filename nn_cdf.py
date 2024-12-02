@@ -45,11 +45,12 @@ class CDF:
         self.raw_data = np.load(os.path.join(CUR_PATH,'data_'+self.datafile_prefix+'.npy'),allow_pickle=True).item()
         self.data_path = os.path.join(CUR_PATH,'data_'+self.datafile_prefix+'.pt') 
         # uncomment these lines to process the generated data and train your own CDF
-        # self.process_data(self.raw_data,self.data_path)
+        self.process_data(self.raw_data,self.data_path)
         self.data = self.load_data(self.data_path)
         self.len_data = len(self.data['k'])
 
     def process_data(self,data, data_path):
+        import pytorch3d.ops 
         keys = list(data.keys())  # Create a copy of the keys
         processed_data = {}
         for k in keys:
@@ -64,13 +65,12 @@ class CDF:
             for i in range(2*self.n):
                 mask = (q_idx==i)
                 if len(q[mask])>self.max_q_per_link:
-                    # fps_q = pytorch3d.ops.sample_farthest_points(q[mask].unsqueeze(0),K=self.max_q_per_link)[0]
-                    # q_lib[:,:,i-1] = fps_q.squeeze()
-                    q_lib[:,:,i-1] = (q[mask])[:self.max_q_per_link]
+                    fps_q = pytorch3d.ops.sample_farthest_points(q[mask].unsqueeze(0),K=self.max_q_per_link)[0]
+                    q_lib[:,:,i-1] = fps_q.squeeze()
+                    # q_lib[:,:,i-1] = (q[mask])[:self.max_q_per_link]
                     # print(q_lib[:,:,i]) 
                 elif len(q[mask])>0:
                     q_lib[:len(q[mask]),:,i-1] = q[mask]
-
             processed_data[k] = {
                 'x':torch.from_numpy(data[k]['x']).float().to(self.device),
                 'q':q_lib,
@@ -307,32 +307,31 @@ class CDF:
                 
                 # print('sdf.shape', sdf.shape)
 
-                # xx = x.cpu().detach().numpy()
-                # pp = self.curve.T[:,:,0:3,3].cpu().detach().numpy()
-                # ax = plt.figure().add_subplot(projection='3d')
-                # r = 5e-3  # Radius of the ball
-                # center = (xx[:,0], xx[:,1], xx[:,2])  # Center of the ball (x, y, z)
-                # # Create a meshgrid for the sphere
-                # phi, theta = np.mgrid[0:np.pi:100j, 0:2*np.pi:100j]
-                # x_plot = r * np.sin(phi) * np.cos(theta) + center[0]
-                # y_plot = r * np.sin(phi) * np.sin(theta) + center[1]
-                # z_plot = r * np.cos(phi) + center[2]
-                # # Plotting the ball
-                # # ax.scatter(xx[:,0],xx[:,1],xx[:,2],c='r',marker='o',size=10)
-                # p_plot = p.cpu().detach().numpy()
-                # p0_plot = p0.cpu().detach().numpy()
-                # for i in range(p.shape[0]):
-                #     ax.plot(p_plot[i,:,0], p_plot[i,:,1], p_plot[i,:,2],label='projected')
-                #     ax.plot(p0_plot[i,:,0], p0_plot[i,:,1], p0_plot[i,:,2],label='original')
-                # # print('p.shape', p.shape)
-                # # print('p0.shape', p0.shape)
-                # ax.plot_surface(x_plot, y_plot, z_plot, color='r', alpha=0.6, label='point')
-                # # ax.legend()
-                # ax.axis('equal')
-                # ax.set_xlabel('x')
-                # ax.set_ylabel('y')
-                # ax.set_zlabel('z')
-                # plt.show()
+                xx = x.cpu().detach().numpy()
+                pp = self.curve.T[:,:,0:3,3].cpu().detach().numpy()
+                ax = plt.figure().add_subplot(projection='3d')
+                r = 5e-3  # Radius of the ball
+                center = (xx[:,0], xx[:,1], xx[:,2])  # Center of the ball (x, y, z)
+                # Create a meshgrid for the sphere
+                phi, theta = np.mgrid[0:np.pi:100j, 0:2*np.pi:100j]
+                x_plot = r * np.sin(phi) * np.cos(theta) + center[0]
+                y_plot = r * np.sin(phi) * np.sin(theta) + center[1]
+                z_plot = r * np.cos(phi) + center[2]
+                # Plotting the ball
+                # ax.scatter(xx[:,0],xx[:,1],xx[:,2],c='r',marker='o',size=10)
+                p_plot = p.cpu().detach().numpy()
+                p0_plot = p0.cpu().detach().numpy()
+                for i in range(p.shape[0]):
+                    ax.plot(p_plot[i,:,0], p_plot[i,:,1], p_plot[i,:,2],label='projected')
+                    ax.plot(p0_plot[i,:,0], p0_plot[i,:,1], p0_plot[i,:,2],label='original')
+                ax.legend()
+                ax.plot_surface(x_plot, y_plot, z_plot, color='r', alpha=0.6, label='point')
+                # ax.legend()
+                ax.axis('equal')
+                ax.set_xlabel('x')
+                ax.set_ylabel('y')
+                ax.set_zlabel('z')
+                plt.show()
                 
                 error = sdf.reshape(-1).abs()
                 MAE = error.mean()
@@ -376,14 +375,15 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # device = torch.device("cpu")
-    cdf = CDF(device,datafile_prefix='121')
+    datafile_prefix='121(2)'
+    cdf = CDF(device,datafile_prefix=datafile_prefix)
 
     # model = MLPRegression(input_dims=3+2*12, output_dims=1, mlp_layers=[1024, 512, 256, 128, 128],skips=[], act_fn=torch.nn.ReLU, nerf=True)
-    model = MLPRegression(input_dims=3+2*12, output_dims=1, mlp_layers=[1024, 512, 512, 256, 256, 128],skips=[2,4], act_fn=torch.nn.ReLU, nerf=True)
+    model = MLPRegression(input_dims=3+2*12, output_dims=1, mlp_layers=[2048, 1024, 1024, 512, 512, 128],skips=[2,4], act_fn=torch.nn.ReLU, nerf=True)
 
-    cdf.train_nn(epoches=20000,model=model)
+    # cdf.train_nn(epoches=50000,model=model)
     
-    model.load_state_dict(torch.load(os.path.join(CUR_PATH,'model_dict_121.pt'))[19000])
+    model.load_state_dict(torch.load(os.path.join(CUR_PATH,'model_dict_'+datafile_prefix+'.pt'))[49900])
     # model.load_state_dict(torch.load(os.path.join(CUR_PATH,'model_dict.pt'))[49900])
     model.to(device)
-    cdf.eval_nn(model,num_iter = 3)
+    cdf.eval_nn(model,num_iter = 5)
